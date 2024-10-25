@@ -12,7 +12,7 @@ import jakarta.persistence.*;
 @Entity  // Marks this class as a JPA entity
 @Table(name = "users")  // Specifies the table name in the database
 public class User {
-    
+
     @Id  // Specifies the primary key
     @GeneratedValue(strategy = GenerationType.IDENTITY)  // Auto-generate the ID
     private Long id;
@@ -21,10 +21,20 @@ public class User {
     private String username;
 
     @Column(nullable = false)  // Ensures the password cannot be null
-    private String password;
+    private String password;  // Store hashed passwords
 
     @Column(nullable = false)  // Ensures the email cannot be null
     private String email;
 
-    // You can add more attributes as needed, such as roles, created date, etc.
+    // Explicit constructor for creating a User with username, password, and email
+    public User(String username, String password, String email) {
+        this.username = username;
+        this.password = password;
+        this.email = email;
+    }
+
+    // Example method to create a default user
+    public static User createDefaultUser() {
+        return new User("defaultUser", "hashedPassword", "default@example.com");
+    }
 }

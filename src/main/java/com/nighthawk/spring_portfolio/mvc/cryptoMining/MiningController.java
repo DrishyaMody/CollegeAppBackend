@@ -4,14 +4,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @RestController
-@RequestMapping("/api/cryptoMining")
+@RequestMapping("/api/mining")
 public class MiningController {
+
+    private List<MiningData> miningDataList = new ArrayList<>(); // To simulate database storage
 
     // Handle mining request
     @PostMapping("/mine")
     public ResponseEntity<String> mineCrypto(@RequestBody MiningData data) {
-        // For now, we just print the received data from frontend
+        // Simulate adding mined data
+        miningDataList.add(data);
         System.out.println("Mining request received: " + data.getMiningPower() + " coins.");
         return new ResponseEntity<>("Mining successful!", HttpStatus.OK);
     }
@@ -26,6 +32,8 @@ public class MiningController {
             return new ResponseEntity<>("Not enough coins!", HttpStatus.BAD_REQUEST);
         }
     }
+
+    // You can add more methods for additional functionalities if needed
 }
 
 // Data class to hold mining data from frontend
