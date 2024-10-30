@@ -1,50 +1,65 @@
 package com.nighthawk.spring_portfolio.mvc.cryptoMining;
 
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/mining")
+@CrossOrigin(origins = {"http://localhost:8080", "http://127.0.0.1:8080"})
 public class MiningController {
 
-    private List<MiningData> miningDataList = new ArrayList<>(); // To simulate database storage
+    @Autowired
+    private MiningService miningService;
 
-    // Handle mining request
-    @PostMapping("/mine")
-    public ResponseEntity<String> mineCrypto(@RequestBody MiningData data) {
-        // Simulate adding mined data
-        miningDataList.add(data);
-        System.out.println("Mining request received: " + data.getMiningPower() + " coins.");
-        return new ResponseEntity<>("Mining successful!", HttpStatus.OK);
-    }
-
-    // Handle upgrade request
-    @PostMapping("/upgrade")
-    public ResponseEntity<String> upgradeMiningPower(@RequestBody MiningData data) {
-        if (data.getCoins() >= 10) {
-            System.out.println("Upgrade request received: New mining power: " + data.getMiningPower());
-            return new ResponseEntity<>("Upgrade successful!", HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>("Not enough coins!", HttpStatus.BAD_REQUEST);
+    @PostMapping("/start/{userId}")
+    public ResponseEntity<String> startMining(@PathVariable Long userId) {
+        boolean success = miningService.startMining(userId);
+        if (success) {
+            return ResponseEntity.ok("Mining started successfully");
         }
+        return ResponseEntity.badRequest().body("Failed to start mining");
     }
 
-    // You can add more methods for additional functionalities if needed
-}
+    @PostMapping("/stop/{userId}")
+    public ResponseEntity<String> stopMining(@PathVariable Long userId) {
+        boolean success = miningService.stopMining(userId);
+        if (success) {
+            return ResponseEntity.ok("Mining stopped successfully");
+        }
+        return ResponseEntity.badRequest().body("Failed to stop mining");
+    }
 
-// Data class to hold mining data from frontend
-class MiningData {
-    private int coins;
-    private int miningPower;
+    @GetMapping("/rewards/{userId}")
+    public ResponseEntity<Double> getRewards(@PathVariable Long userId) {
+        double rewards = miningService.calculateRewards(userId);
+        return ResponseEntity.ok(rewards);
+    }
 
-    // Getters and Setters
-    public int getCoins() { return coins; }
-    public void setCoins(int coins) { this.coins = coins; }
-    
-    public int getMiningPower() { return miningPower; }
-    public void setMiningPower(int miningPower) { this.miningPower = miningPower; }
+    @PostMapping("/buy-gpu/{userId}/{gpuId}")
+    public ResponseEntity<String> buyGPU(
+            @PathVariable Long userId, 
+            @PathVariable Long gpuId) {
+        boolean success = miningService.buyGPU(userId, gpuId);
+        if (success) {
+            return ResponseEntity.ok("GPU purchased successfully");
+        }
+        return ResponseEntity.badRequest().body("Failed to purchase GPU");
+    }
+
+    @GetMapping("/gpus")
+    public ResponseEntity<List<GPU>> getAllGPUs() {
+        List<GPU> gpus = miningService.getAllGPUs();
+        return ResponseEntity.ok(gpus);
+    }
+
+    @GetMapping("/stats/{userId}")
+    public ResponseEntity<User> getUserStats(@PathVariable Long userId) {
+        User user = miningService.getUserStats(userId);
+        if (user != null) {
+            return ResponseEntity.ok(user);
+        }
+        return ResponseEntity.notFound().build();
+    }
 }
