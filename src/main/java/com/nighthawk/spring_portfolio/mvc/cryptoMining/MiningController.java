@@ -8,7 +8,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/mining")
-@CrossOrigin(origins = {"http://localhost:8085", "http://127.0.0.1:8085"})
+@CrossOrigin(origins = {"http://localhost:8088", "http://127.0.0.1:8088"})
 public class MiningController {
 
     @Autowired
