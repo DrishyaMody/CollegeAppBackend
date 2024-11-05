@@ -45,7 +45,7 @@ public class PersonViewController {
             return "person/create";
         }
         repository.save(person);
-        repository.addRoleToPerson(person.getEmail(), "ROLE_STUDENT");
+        repository.addRoleToPerson(person.getEmail(), "ROLE_USER");
         // Redirect to next step
         return "redirect:/mvc/person/read";
     }
@@ -63,7 +63,7 @@ public class PersonViewController {
             return "person/update";
         }
         repository.save(person);
-        repository.addRoleToPerson(person.getEmail(), "ROLE_STUDENT");
+        repository.addRoleToPerson(person.getEmail(), "ROLE_USER");
 
         // Redirect to next step
         return "redirect:/mvc/person/read";

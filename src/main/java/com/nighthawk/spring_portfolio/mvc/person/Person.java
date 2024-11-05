@@ -12,14 +12,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToMany;
-import jakarta.persistence.Convert;
-import static jakarta.persistence.FetchType.EAGER;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
@@ -28,8 +28,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import com.vladmihalcea.hibernate.type.json.JsonType;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -37,58 +35,38 @@ import lombok.NonNull;
 
 /**
  * Person is a POJO, Plain Old Java Object.
- * --- @Data is Lombox annotation for @Getter @Setter @ToString @EqualsAndHashCode @RequiredArgsConstructor
- * --- @AllArgsConstructor is Lombox annotation for a constructor with all arguments
- * --- @NoArgsConstructor is Lombox annotation for a constructor with no arguments
- * --- @Entity annotation is used to mark the class as a persistent Java class.
  */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Convert(attributeName ="person", converter = JsonType.class)
 public class Person {
 
-    /** automatic unique identifier for Person record
-     * --- Id annotation is used to specify the identifier property of the entity.
-     * ----GeneratedValue annotation is used to specify the primary key generation strategy to use.
-     * ----- The strategy is to have the persistence provider pick an appropriate strategy for the particular database.
-     * ----- GenerationType.AUTO is the default generation type and it will pick the strategy based on the used database.
-     */ 
+    /** Automatic unique identifier for Person record */
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
-    /** Many to Many relationship with PersonRole
-     * --- @ManyToMany annotation is used to specify a many-to-many relationship between the entities.
-     * --- FetchType.EAGER is used to specify that data must be eagerly fetched, meaning that it must be loaded immediately.
-     * --- Collection is a root interface in the Java Collection Framework, in this case it is used to store PersonRole objects.
-     * --- ArrayList is a resizable array implementation of the List interface, allowing all elements to be accessed using an integer index.
-     * --- PersonRole is a POJO, Plain Old Java Object. 
-     */
-    @ManyToMany(fetch = EAGER)
+    @ManyToMany
+    @JoinTable(
+        name = "person_person_sections",
+        joinColumns = @JoinColumn(name = "person_id"),
+        inverseJoinColumns = @JoinColumn(name = "section_id")
+    )
+    private Collection<personSections> sections = new ArrayList<>();
+
+    @ManyToMany
     private Collection<PersonRole> roles = new ArrayList<>();
 
-    /** email, password, roles are key attributes to login and authentication
-     * --- @NotEmpty annotation is used to validate that the annotated field is not null or empty, meaning it has to have a value.
-     * --- @Size annotation is used to validate that the annotated field is between the specified boundaries, in this case greater than 5.
-     * --- @Email annotation is used to validate that the annotated field is a valid email address.
-     * --- @Column annotation is used to specify the mapped column for a persistent property or field, in this case unique and email.
-     */
     @NotEmpty
-    @Size(min=5)
-    @Column(unique=true)
+    @Size(min = 5)
+    @Column(unique = true)
     @Email
     private String email;
 
     @NotEmpty
     private String password;
 
-    /** name, dob are attributes to describe the person
-     * --- @NonNull annotation is used to generate a constructor with AllArgsConstructor Lombox annotation.
-     * --- @Size annotation is used to validate that the annotated field is between the specified boundaries, in this case between 2 and 30 characters.
-     * --- @DateTimeFormat annotation is used to declare a field as a date, in this case the pattern is specified as yyyy-MM-dd.
-     */ 
     @NonNull
     @Size(min = 2, max = 30, message = "Name (2 to 30 chars)")
     private String name;
@@ -96,102 +74,77 @@ public class Person {
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     private Date dob;
 
-    /** stats is used to store JSON for daily stat$
-     * --- @JdbcTypeCode annotation is used to specify the JDBC type code for a column, in this case json.
-     * --- @Column annotation is used to specify the mapped column for a persistent property or field, in this case columnDefinition is specified as jsonb.
-     * * * Example of JSON data:
-        "stats": {
-            "2022-11-13": {
-                "calories": 2200,
-                "steps": 8000
-            }
-        }
-    */
+    @Column(length = 255, nullable = true)
+    private String pfp;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean kasmServerNeeded = false;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private Map<String,Map<String, Object>> stats = new HashMap<>(); 
-    
+    private Map<String, Map<String, Object>> stats = new HashMap<>();
 
-    /** Custom constructor for Person when building a new Person object from an API call
-     */
-    public Person(String email, String password, String name, Date dob, PersonRole role) {
+    public Person(String email, String password, String name, Date dob, String pfp, Boolean kasmServerNeeded, PersonRole role) {
         this.email = email;
         this.password = password;
         this.name = name;
         this.dob = dob;
+        this.kasmServerNeeded = kasmServerNeeded;
+        this.pfp = pfp;
         this.roles.add(role);
     }
 
-    /** Custom getter to return age from dob attribute
-    */
     public int getAge() {
         if (this.dob != null) {
             LocalDate birthDay = this.dob.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-            return Period.between(birthDay, LocalDate.now()).getYears(); }
+            return Period.between(birthDay, LocalDate.now()).getYears();
+        }
         return -1;
     }
 
-    /** 1st telescoping method to create a Person object with USER role
-     * @param name
-     * @param email
-     * @param password
-     * @param dob
-     * @return Person
-     *  */ 
-    public static Person createPerson(String name, String email, String password, String dob) {
-        // By default, Spring Security expects roles to have a "ROLE_" prefix.
-        return createPerson(name, email, password, dob, Arrays.asList("ROLE_USER"));
+    public static Person createPerson(String name, String email, String password, Boolean kasmServerNeeded, String dob) {
+        return createPerson(name, email, password, null, kasmServerNeeded, dob, Arrays.asList("ROLE_USER"));
     }
-    /** 2nd telescoping method to create a Person object with parameterized roles
-     * @param roles 
-     */
-    public static Person createPerson(String name, String email, String password, String dob, List<String> roleNames) {
+
+    public static Person createPerson(String name, String email, String password, String pfp, Boolean kasmServerNeeded, String dob, List<String> roleNames) {
         Person person = new Person();
         person.setName(name);
         person.setEmail(email);
         person.setPassword(password);
+        person.setKasmServerNeeded(kasmServerNeeded);
+        person.setPfp(pfp);
         try {
             Date date = new SimpleDateFormat("MM-dd-yyyy").parse(dob);
             person.setDob(date);
         } catch (Exception e) {
             // handle exception
         }
-    
+
         List<PersonRole> roles = new ArrayList<>();
         for (String roleName : roleNames) {
             PersonRole role = new PersonRole(roleName);
             roles.add(role);
         }
         person.setRoles(roles);
-    
+
         return person;
     }
-   
-    /** Static method to initialize an array list of Person objects 
-     * @return Person[], an array of Person objects
-     */
+
     public static Person[] init() {
         ArrayList<Person> persons = new ArrayList<>();
-        persons.add(createPerson("Thomas Edison", "toby@gmail.com", "123toby", "01-01-1840", Arrays.asList("ROLE_ADMIN", "ROLE_USER", "ROLE_TESTER")));
-        persons.add(createPerson("Alexander Graham Bell", "lexb@gmail.com", "123lex", "01-01-1847"));
-        persons.add(createPerson("Nikola Tesla", "niko@gmail.com", "123niko", "01-01-1850"));
-        persons.add(createPerson("Madam Currie", "madam@gmail.com", "123madam", "01-01-1860"));
-        persons.add(createPerson("Grace Hopper", "hop@gmail.com", "123hop", "12-09-1906"));
-        persons.add(createPerson("John Mortensen", "jm1021@gmail.com", "123Qwerty!", "10-21-1959", Arrays.asList("ROLE_ADMIN")));
+        persons.add(createPerson("Thomas Edison", "toby@gmail.com", "123toby", "pfp1", true, "01-01-1840", Arrays.asList("ROLE_ADMIN", "ROLE_USER", "ROLE_TESTER")));
+        persons.add(createPerson("Alexander Graham Bell", "lexb@gmail.com", "123lex", "pfp2", true, "01-01-1847", Arrays.asList("ROLE_USER")));
+        persons.add(createPerson("Nikola Tesla", "niko@gmail.com", "123niko", "pfp3", true, "01-01-1850", Arrays.asList("ROLE_USER")));
+        persons.add(createPerson("Madam Curie", "madam@gmail.com", "123madam", "pfp4", true, "01-01-1860", Arrays.asList("ROLE_USER")));
+        persons.add(createPerson("Grace Hopper", "hop@gmail.com", "123hop", "pfp5", true, "12-09-1906", Arrays.asList("ROLE_USER")));
+        persons.add(createPerson("John Mortensen", "jm1021@gmail.com", "123Qwerty!", "pfp6", true, "10-21-1959", Arrays.asList("ROLE_ADMIN")));
         return persons.toArray(new Person[0]);
     }
 
-    /** Static method to print Person objects from an array
-     * @param args, not used
-     */
     public static void main(String[] args) {
-        // obtain Person from initializer
-        Person persons[] = init();
-
-        // iterate using "enhanced for loop"
-        for( Person person : persons) {
-            System.out.println(person);  // print object
+        Person[] persons = init();
+        for (Person person : persons) {
+            System.out.println(person);
         }
     }
-
 }
