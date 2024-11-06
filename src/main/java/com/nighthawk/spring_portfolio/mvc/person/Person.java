@@ -33,16 +33,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 
-/**
- * Person is a POJO, Plain Old Java Object.
- */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
 public class Person {
 
-    /** Automatic unique identifier for Person record */
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
@@ -84,14 +80,18 @@ public class Person {
     @Column(columnDefinition = "jsonb")
     private Map<String, Map<String, Object>> stats = new HashMap<>();
 
-    public Person(String email, String password, String name, Date dob, String pfp, Boolean kasmServerNeeded, PersonRole role) {
+    private String team;
+
+    // Constructor matching the parameters in postPerson method
+    public Person(String email, String password, String name, Date dob, String pfp, Boolean kasmServerNeeded, PersonRole role, String team) {
         this.email = email;
         this.password = password;
         this.name = name;
         this.dob = dob;
-        this.kasmServerNeeded = kasmServerNeeded;
         this.pfp = pfp;
+        this.kasmServerNeeded = kasmServerNeeded;
         this.roles.add(role);
+        this.team = team;
     }
 
     public int getAge() {

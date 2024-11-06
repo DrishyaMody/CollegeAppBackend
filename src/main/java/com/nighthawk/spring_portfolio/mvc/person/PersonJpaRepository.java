@@ -28,12 +28,35 @@ import java.util.List;
 public interface PersonJpaRepository extends JpaRepository<Person, Long> {
 
     /**
-     * Query methods defined by Spring Data JPA naming conventions.
-     * Spring Data JPA will automatically generate a query using the method name.
+     * Finds a person by their email address.
+     * Spring Data JPA will automatically generate a query based on the method name.
+     * @param email the email address to search for.
+     * @return the person with the specified email.
      */
     Person findByEmail(String email);
+
+    /**
+     * Finds all persons ordered by name in ascending order.
+     * @return a list of all persons sorted by name.
+     */
     List<Person> findAllByOrderByNameAsc();
+
+    /**
+     * Finds persons whose name or email contains the specified search term, ignoring case.
+     * Spring Data JPA will automatically generate a query based on the method name.
+     * @param name the name to search for.
+     * @param email the email to search for.
+     * @return a list of persons matching the name or email criteria.
+     */
     List<Person> findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String name, String email);
+
+    /**
+     * Finds a person by their email and password.
+     * This method is typically used for authentication purposes.
+     * @param email the email address to search for.
+     * @param password the password to search for.
+     * @return the person with the specified email and password.
+     */
     Person findByEmailAndPassword(String email, String password);
 
     /**
@@ -41,6 +64,8 @@ public interface PersonJpaRepository extends JpaRepository<Person, Long> {
      * This allows for more complex queries that can't be expressed through the method name.
      * The query will find all Person entities where the name or email contains the given term.
      * The 'nativeQuery = true' parameter indicates that the query is a native SQL query, not a JPQL query.
+     * @param term the search term to look for in name or email.
+     * @return a list of persons whose name or email contains the specified term.
      */
     @Query(
             value = "SELECT * FROM Person p WHERE p.name LIKE ?1 or p.email LIKE ?1",
