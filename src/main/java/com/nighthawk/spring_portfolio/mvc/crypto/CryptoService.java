@@ -47,15 +47,17 @@ public class CryptoService {
             }
             return cryptos;
         } catch (ParseException e) {
+            System.err.println("Error parsing JSON response from CoinMarketCap API.");
             e.printStackTrace();
             return null;
         } catch (Exception e) {
+            System.err.println("Failed to fetch data from CoinMarketCap API.");
             e.printStackTrace();
             return null;
         }
     }
 
-    // New method to fetch historical data from CoinGecko
+    // Method to fetch historical data from CoinGecko
     public List<Double> getCryptoHistoricalData(String cryptoId, int days) {
         try {
             // CoinGecko URL for historical data
@@ -68,7 +70,13 @@ public class CryptoService {
             JSONObject jsonResponse = (JSONObject) parser.parse(response);
             JSONArray pricesArray = (JSONArray) jsonResponse.get("prices");
 
-            // Extract only the prices from the JSON response
+            // Check if pricesArray is null or empty
+            if (pricesArray == null || pricesArray.isEmpty()) {
+                System.err.println("No price data returned for cryptoId: " + cryptoId);
+                return null;
+            }
+
+            // Extract prices from the JSON response
             List<Double> prices = new ArrayList<>();
             for (Object priceObj : pricesArray) {
                 JSONArray priceArray = (JSONArray) priceObj;
@@ -76,7 +84,12 @@ public class CryptoService {
                 prices.add(price);
             }
             return prices;
+        } catch (ParseException e) {
+            System.err.println("Error parsing JSON response from CoinGecko API for cryptoId: " + cryptoId);
+            e.printStackTrace();
+            return null;
         } catch (Exception e) {
+            System.err.println("Failed to fetch trend data from CoinGecko API for cryptoId: " + cryptoId);
             e.printStackTrace();
             return null;
         }
