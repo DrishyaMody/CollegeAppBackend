@@ -31,7 +31,6 @@ public class MvcConfig implements WebMvcConfigurer {
     
     @Override
     public void addCorsMappings(@NonNull CorsRegistry registry) {
-        registry.addMapping("/**").allowedOrigins("https://spring2025.nighthawkcodingsociety.com", "https://nighthawkcoders.github.io", "http://127.0.0.1:4100", "http://localhost:4100");
-    }
+        registry.addMapping("/**").allowedOrigins( "https://drishyamody.github.io/CollegeAppFrontend/", "http://127.0.0.1:4100", "http://localhost:4100");
+    }}
     
-}

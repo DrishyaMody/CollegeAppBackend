@@ -105,9 +105,8 @@ public class PersonApiController {
         private String pfp;
         private Boolean kasmServerNeeded;
         private String team;
-        private Double balance; // New field for balance
 
-        public PersonDto(String email, String password, String name, String dob, String pfp, Boolean kasmServerNeeded, String team, Double balance) {
+        public PersonDto(String email, String password, String name, String dob, String pfp, Boolean kasmServerNeeded, String team) {
             this.email = email;
             this.password = password;
             this.name = name;
@@ -115,7 +114,6 @@ public class PersonApiController {
             this.pfp = pfp;
             this.kasmServerNeeded = kasmServerNeeded;
             this.team = team;
-            this.balance = balance;
         }
 
         public String getTeam() {
@@ -141,8 +139,7 @@ public class PersonApiController {
             personDto.getPfp(),
             personDto.getKasmServerNeeded(),
             personDetailsService.findRole("USER"),
-            personDto.getTeam(),
-            personDto.getBalance() // Set initial balance
+            personDto.getTeam()
         );
 
         personDetailsService.save(person);
@@ -164,7 +161,6 @@ public class PersonApiController {
             if (personDto.getPfp() != null) existingPerson.setPfp(personDto.getPfp());
             if (personDto.getKasmServerNeeded() != null) existingPerson.setKasmServerNeeded(personDto.getKasmServerNeeded());
             if (personDto.getTeam() != null) existingPerson.setTeam(personDto.getTeam());
-            if (personDto.getBalance() != null) existingPerson.setBalance(personDto.getBalance());
 
             if (personDto.getDob() != null) {
                 try {

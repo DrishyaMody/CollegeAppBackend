@@ -47,6 +47,7 @@ public class SecurityConfig {
                 .addHeaderWriter(new StaticHeadersWriter("Access-Control-Allow-Headers", "Content-Type", "Authorization", "x-csrf-token"))
                 .addHeaderWriter(new StaticHeadersWriter("Access-Control-Max-Age", "600")) // Fixed typo for Max Age
                 .addHeaderWriter(new StaticHeadersWriter("Access-Control-Allow-Methods", "POST", "GET", "DELETE", "OPTIONS", "HEAD"))
+                .addHeaderWriter(new StaticHeadersWriter("Access-Control-Allow-Origin",  "http://127.0.0.1:4100"))
             )
 			.exceptionHandling(exceptions -> exceptions
 				.authenticationEntryPoint(jwtAuthenticationEntryPoint)

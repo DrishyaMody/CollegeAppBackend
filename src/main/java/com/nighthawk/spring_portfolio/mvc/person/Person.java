@@ -96,7 +96,7 @@ public class Person {
         this.kasmServerNeeded = kasmServerNeeded;
         this.roles.add(role);
         this.team = team;
-        this.balance = 0.0; // Initial balance set to 0.0
+        this.balance = 5000.0; // Initial balance set to 5000.0
     }
 
     public int getAge() {
@@ -118,6 +118,7 @@ public class Person {
         person.setPassword(password);
         person.setKasmServerNeeded(kasmServerNeeded);
         person.setPfp(pfp);
+        person.setBalance(5000.0); // Set initial balance to 5000.0
         try {
             Date date = new SimpleDateFormat("MM-dd-yyyy").parse(dob);
             person.setDob(date);

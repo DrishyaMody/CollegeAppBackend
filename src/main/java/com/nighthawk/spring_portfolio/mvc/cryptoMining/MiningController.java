@@ -40,16 +40,11 @@ public class MiningController {
             throw new RuntimeException("Not authenticated");
         }
 
-        // Try both case-sensitive and case-insensitive lookup
-        Person person = personRepository.findByEmail(email);
-        if (person == null) {
-            person = personRepository.findByEmailIgnoreCase(email);
-        }
-
-        if (person == null) {
+        // Find person by email
+        Person person = personRepository.findByEmail(email).orElseThrow(() -> {
             System.out.println("DEBUG - No person found for email: " + email);
-            throw new RuntimeException("User not found: " + email);
-        }
+            return new RuntimeException("User not found: " + email);
+        });
 
         System.out.println("DEBUG - Found person: " + person.getEmail());
 
@@ -193,13 +188,9 @@ public class MiningController {
             debug.put("principal", auth.getPrincipal().toString());
             debug.put("authorities", auth.getAuthorities().toString());
             
-            Person person = personRepository.findByEmail(email);
-            debug.put("personFoundExact", person != null);
-            
-            if (person == null) {
-                person = personRepository.findByEmailIgnoreCase(email);
-                debug.put("personFoundIgnoreCase", person != null);
-            }
+            Optional<Person> personOpt = personRepository.findByEmail(email);
+            Person person = personOpt.orElse(null);
+            debug.put("personFound", person != null);
             
             debug.put("allEmails", personRepository.findAll().stream()
                 .map(Person::getEmail)
