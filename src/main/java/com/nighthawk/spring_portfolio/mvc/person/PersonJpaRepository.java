@@ -71,4 +71,12 @@ public interface PersonJpaRepository extends JpaRepository<Person, Long> {
             value = "SELECT * FROM Person p WHERE p.name LIKE ?1 or p.email LIKE ?1",
             nativeQuery = true)
     List<Person> findByLikeTermNative(String term);
+
+    /**
+     * Finds a person by their email address, ignoring case.
+     * @param email the email address to search for.
+     * @return the person with the specified email.
+     */
+    
+    Person findByEmailIgnoreCase(String email);
 }

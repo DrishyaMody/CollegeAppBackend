@@ -37,6 +37,7 @@ public class SecurityConfig {
                 .requestMatchers("/mvc/person/**").authenticated()
                 .requestMatchers(HttpMethod.GET,"/login").permitAll()
                 .requestMatchers(HttpMethod.POST,"/authenticateForm").permitAll()
+                .requestMatchers("/api/mining/**").authenticated()
                 .requestMatchers("/**").permitAll()
             )
             .cors(Customizer.withDefaults())
