@@ -82,6 +82,10 @@ public class Person {
 
     private String team;
 
+    // New balance field
+    @Column(nullable = false, columnDefinition = "double default 0.0")
+    private Double balance = 5000.0;
+
     // Constructor matching the parameters in postPerson method
     public Person(String email, String password, String name, Date dob, String pfp, Boolean kasmServerNeeded, PersonRole role, String team) {
         this.email = email;
@@ -92,6 +96,7 @@ public class Person {
         this.kasmServerNeeded = kasmServerNeeded;
         this.roles.add(role);
         this.team = team;
+        this.balance = 0.0; // Initial balance set to 0.0
     }
 
     public int getAge() {

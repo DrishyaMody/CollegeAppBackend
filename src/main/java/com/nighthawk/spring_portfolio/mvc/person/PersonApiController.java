@@ -25,19 +25,23 @@ public class PersonApiController {
     @Autowired
     private PersonDetailsService personDetailsService;
 
+    // Retrieves the person based on JWT authentication details
     @GetMapping("/person/get")
     public ResponseEntity<Person> getPerson(Authentication authentication) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String email = userDetails.getUsername();
-        Person person = repository.findByEmail(email);
-        return person != null ? new ResponseEntity<>(person, HttpStatus.OK) : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        Optional<Person> person = repository.findByEmail(email);
+        return person.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
+                     .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
+    // Retrieves all people, sorted by name
     @GetMapping("/people")
     public ResponseEntity<List<Person>> getPeople() {
         return new ResponseEntity<>(repository.findAllByOrderByNameAsc(), HttpStatus.OK);
     }
 
+    // Retrieves a person by ID
     @GetMapping("/person/{id}")
     public ResponseEntity<Person> getPerson(@PathVariable long id) {
         Optional<Person> optional = repository.findById(id);
@@ -48,10 +52,39 @@ public class PersonApiController {
     // Fetch person by email
     @GetMapping("/person")
     public ResponseEntity<Person> getPersonByEmail(@RequestParam String email) {
-        Person person = repository.findByEmail(email);
-        return person != null ? new ResponseEntity<>(person, HttpStatus.OK) : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        Optional<Person> person = repository.findByEmail(email);
+        return person.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
+                     .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
+    // Retrieves the balance of the authenticated user
+    @GetMapping("/person/balance")
+    public ResponseEntity<Double> getBalance(Authentication authentication) {
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = userDetails.getUsername();
+        Optional<Person> person = repository.findByEmail(email);
+        return person.map(value -> new ResponseEntity<>(value.getBalance(), HttpStatus.OK))
+                     .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+    // Updates the balance of the authenticated user
+    @PutMapping("/person/balance")
+    public ResponseEntity<String> updateBalance(Authentication authentication, @RequestBody BalanceUpdateRequest request) {
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = userDetails.getUsername();
+        Optional<Person> optionalPerson = repository.findByEmail(email);
+
+        if (optionalPerson.isPresent()) {
+            Person person = optionalPerson.get();
+            person.setBalance(person.getBalance() + request.getAmount());
+            repository.save(person);
+            return new ResponseEntity<>("Balance updated successfully", HttpStatus.OK);
+        }
+
+        return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    // Deletes a person by ID
     @DeleteMapping("/person/{id}")
     public ResponseEntity<Person> deletePerson(@PathVariable long id) {
         Optional<Person> optional = repository.findById(id);
@@ -62,6 +95,7 @@ public class PersonApiController {
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
+    // DTO for Person creation and update
     @Getter
     public static class PersonDto {
         private String email;
@@ -70,9 +104,10 @@ public class PersonApiController {
         private String dob;
         private String pfp;
         private Boolean kasmServerNeeded;
-        private String team; // New field for team
+        private String team;
+        private Double balance; // New field for balance
 
-        public PersonDto(String email, String password, String name, String dob, String pfp, Boolean kasmServerNeeded, String team) {
+        public PersonDto(String email, String password, String name, String dob, String pfp, Boolean kasmServerNeeded, String team, Double balance) {
             this.email = email;
             this.password = password;
             this.name = name;
@@ -80,6 +115,7 @@ public class PersonApiController {
             this.pfp = pfp;
             this.kasmServerNeeded = kasmServerNeeded;
             this.team = team;
+            this.balance = balance;
         }
 
         public String getTeam() {
@@ -87,6 +123,7 @@ public class PersonApiController {
         }
     }
 
+    // Creates a new person
     @PostMapping("/person/create")
     public ResponseEntity<Object> postPerson(@RequestBody PersonDto personDto) {
         Date dob;
@@ -104,18 +141,20 @@ public class PersonApiController {
             personDto.getPfp(),
             personDto.getKasmServerNeeded(),
             personDetailsService.findRole("USER"),
-            personDto.getTeam()
+            personDto.getTeam(),
+            personDto.getBalance() // Set initial balance
         );
 
         personDetailsService.save(person);
         return new ResponseEntity<>(personDto.getEmail() + " is created successfully", HttpStatus.CREATED);
     }
 
+    // Updates a person's details based on authentication
     @PostMapping(value = "/person/update", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Object> updatePerson(Authentication authentication, @RequestBody PersonDto personDto) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String email = userDetails.getUsername();
-        Optional<Person> optionalPerson = Optional.ofNullable(repository.findByEmail(email));
+        Optional<Person> optionalPerson = repository.findByEmail(email);
 
         if (optionalPerson.isPresent()) {
             Person existingPerson = optionalPerson.get();
@@ -125,6 +164,7 @@ public class PersonApiController {
             if (personDto.getPfp() != null) existingPerson.setPfp(personDto.getPfp());
             if (personDto.getKasmServerNeeded() != null) existingPerson.setKasmServerNeeded(personDto.getKasmServerNeeded());
             if (personDto.getTeam() != null) existingPerson.setTeam(personDto.getTeam());
+            if (personDto.getBalance() != null) existingPerson.setBalance(personDto.getBalance());
 
             if (personDto.getDob() != null) {
                 try {
@@ -142,17 +182,18 @@ public class PersonApiController {
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
-    @PutMapping("/person/{id}/team")
-    public ResponseEntity<String> assignTeamToPerson(@PathVariable Long id, @RequestBody TeamAssignmentRequest request) {
-        Optional<Person> optionalPerson = repository.findById(id);
+    // Assigns a team to a person by email
+    @PutMapping("/person/team")
+    public ResponseEntity<String> assignTeamToPerson(@RequestParam String email, @RequestBody TeamAssignmentRequest request) {
+        Optional<Person> optionalPerson = repository.findByEmail(email);
 
         if (optionalPerson.isPresent()) {
             Person person = optionalPerson.get();
-            
+
             if (request.getTeam() == null || request.getTeam().isEmpty()) {
                 return new ResponseEntity<>("Team name cannot be null or empty", HttpStatus.BAD_REQUEST);
             }
-            
+
             if (request.getTeam().equals(person.getTeam())) {
                 return new ResponseEntity<>("User is already assigned to this team.", HttpStatus.CONFLICT);
             }
@@ -176,6 +217,19 @@ public class PersonApiController {
 
         public void setTeam(String team) {
             this.team = team;
+        }
+    }
+
+    // Request body for balance update
+    public static class BalanceUpdateRequest {
+        private Double amount; // Positive to add, negative to deduct
+
+        public Double getAmount() {
+            return amount;
+        }
+
+        public void setAmount(Double amount) {
+            this.amount = amount;
         }
     }
 }
