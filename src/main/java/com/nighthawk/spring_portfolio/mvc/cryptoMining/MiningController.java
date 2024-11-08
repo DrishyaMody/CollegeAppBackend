@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import java.util.*;
+import java.util.Map;
+import java.util.Optional;
 import org.springframework.transaction.annotation.Transactional;
 
 @RestController
@@ -74,37 +76,42 @@ public class MiningController {
     @GetMapping("/stats")
     public ResponseEntity<?> getMiningStats() {
         try {
-            System.out.println("\nDEBUG - Getting mining stats");
             MiningUser user = getOrCreateMiningUser();
-            
             Map<String, Object> stats = new HashMap<>();
+            
+            // Add GPU information
+            List<GPU> gpus = user.getGpus();
+            if (!gpus.isEmpty()) {
+                GPU currentGpu = gpus.get(0);
+                stats.put("currentGpu", currentGpu.getName());
+                stats.put("temperature", currentGpu.getTemp());
+                stats.put("powerDraw", currentGpu.getPowerConsumption());
+            } else {
+                stats.put("currentGpu", "No GPU");
+                stats.put("temperature", 0);
+                stats.put("powerDraw", 0);
+            }
+            
             stats.put("btcBalance", user.getBtcBalance());
             stats.put("pendingBalance", user.getPendingBalance());
             stats.put("hashrate", user.getCurrentHashrate());
             stats.put("shares", user.getShares());
-            stats.put("isMining", user.isMining());
-            stats.put("currentPool", user.getCurrentPool());
+            stats.put("temperature", user.getAverageTemperature());
+            stats.put("powerDraw", user.getPowerConsumption());
             
-            List<Map<String, Object>> gpus = new ArrayList<>();
-            for (GPU gpu : user.getGpus()) {
-                Map<String, Object> gpuInfo = new HashMap<>();
-                gpuInfo.put("id", gpu.getId());
-                gpuInfo.put("name", gpu.getName());
-                gpuInfo.put("hashrate", gpu.getHashRate());
-                gpuInfo.put("power", gpu.getPowerConsumption());
-                gpus.add(gpuInfo);
-            }
-            stats.put("gpus", gpus);
+            // Calculate daily estimates
+            double dailyRevenue = user.getCurrentHashrate() * 86400 / (1e12); // Example calculation
+            double powerCost = user.getPowerConsumption() * 24 * 0.12 / 1000; // $0.12 per kWh
+            
+            stats.put("dailyRevenue", dailyRevenue);
+            stats.put("powerCost", powerCost);
+            stats.put("profit", dailyRevenue - powerCost);
             
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of(
-                    "error", e.getMessage(),
-                    "type", e.getClass().getSimpleName(),
-                    "trace", Arrays.toString(e.getStackTrace())
-                ));
+                .body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -159,16 +166,24 @@ public class MiningController {
     @GetMapping("/market")
     public ResponseEntity<?> getMarketData() {
         try {
-            List<Market> markets = marketRepository.findAll();
             Map<String, Object> marketData = new HashMap<>();
             
-            for (Market market : markets) {
-                Map<String, Object> data = new HashMap<>();
-                data.put("price", market.getPrice());
-                data.put("change24h", market.getChange24h());
-                marketData.put(market.getSymbol().toLowerCase(), data);
-            }
-            
+            // Get market data from repository
+            Market btcMarket = marketRepository.findBySymbol("BTC");
+            Market ethMarket = marketRepository.findBySymbol("ETH");
+            Market niceMarket = marketRepository.findBySymbol("NICE");
+            Market f2pMarket = marketRepository.findBySymbol("F2P");
+
+            // Structure the response to match frontend expectations
+            marketData.put("nicehash", niceMarket != null ? niceMarket.getPrice() : 0.0);
+            marketData.put("nicehashChange", niceMarket != null ? niceMarket.getChange24h() : 0.0);
+            marketData.put("ethereum", ethMarket != null ? ethMarket.getPrice() : 0.0);
+            marketData.put("ethereumChange", ethMarket != null ? ethMarket.getChange24h() : 0.0);
+            marketData.put("f2pool", f2pMarket != null ? f2pMarket.getPrice() : 0.0);
+            marketData.put("f2poolChange", f2pMarket != null ? f2pMarket.getChange24h() : 0.0);
+            marketData.put("bitcoin", btcMarket != null ? btcMarket.getPrice() : 0.0);
+            marketData.put("bitcoinChange", btcMarket != null ? btcMarket.getChange24h() : 0.0);
+
             return ResponseEntity.ok(marketData);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -217,6 +232,48 @@ public class MiningController {
                     "error", e.getMessage(),
                     "type", e.getClass().getSimpleName()
                 ));
+        }
+    }
+
+    @PostMapping("/gpu/buy/{id}")
+    public ResponseEntity<?> buyGpu(@PathVariable Long id) {
+        try {
+            MiningUser user = getOrCreateMiningUser();
+            
+            Optional<GPU> gpuOptional = gpuRepository.findById(id);
+            if (!gpuOptional.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", "GPU not found"));
+            }
+            
+            GPU gpu = gpuOptional.get();
+            
+            // Check if user can afford it (if it's not free)
+            if (gpu.getPrice() > 0) {
+                Market btcMarket = marketRepository.findBySymbol("BTC");
+                double btcPrice = (btcMarket != null) ? btcMarket.getPrice() : 40000.0;
+                
+                double gpuPriceInBTC = gpu.getPrice() / btcPrice;
+                if (user.getBtcBalance() < gpuPriceInBTC) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("success", false, "message", "Insufficient funds"));
+                }
+                
+                user.setBtcBalance(user.getBtcBalance() - gpuPriceInBTC);
+            }
+            
+            user.getGpus().add(gpu);
+            miningUserRepository.save(user);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Successfully purchased " + gpu.getName()
+            ));
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 }
